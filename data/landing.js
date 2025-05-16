@@ -103,8 +103,8 @@ export const testimonialsData = [
   },
   {
     name: "Emily Rodriguez",
-    role: "emily.webp",
-    image: "https://randomuser.me/api/portraits/women/74.jpg",
+    role: "Financial Advisor",
+    image: "/emily.webp",
     quote:
       "I recommend Welth to all my clients. The multi-currency support and detailed analytics make it perfect for international investors.",
   },
