@@ -59,7 +59,6 @@ export async function bulkDeleteTransactions(transactionIds) {
 
     if (!user) throw new Error("User not found");
 
-    // Get transactions to calculate balance changes
     const transactions = await db.transaction.findMany({
       where: {
         id: { in: transactionIds },
@@ -67,19 +66,21 @@ export async function bulkDeleteTransactions(transactionIds) {
       },
     });
 
-    // Group transactions by account to update balances
-    const accountBalanceChanges = transactions.reduce((acc, transaction) => {
-      const change =
-        transaction.type === "EXPENSE"
-          ? transaction.amount
-          : -transaction.amount;
-      acc[transaction.accountId] = (acc[transaction.accountId] || 0) + change;
-      return acc;
-    }, {});
+    // Corrected balance adjustment logic
+    const accountBalanceChanges = {};
 
-    // Delete transactions and update account balances in a transaction
+    for (const transaction of transactions) {
+      const accountId = transaction.accountId;
+      const amount = transaction.amount.toNumber();
+
+      // If expense, add back the amount (you had spent it before)
+      // If income, subtract the amount (you had gained it before)
+      const adjustment = transaction.type === "EXPENSE" ? amount : -amount;
+
+      accountBalanceChanges[accountId] = (accountBalanceChanges[accountId] || 0) + adjustment;
+    }
+
     await db.$transaction(async (tx) => {
-      // Delete transactions
       await tx.transaction.deleteMany({
         where: {
           id: { in: transactionIds },
@@ -87,10 +88,7 @@ export async function bulkDeleteTransactions(transactionIds) {
         },
       });
 
-      // Update account balances
-      for (const [accountId, balanceChange] of Object.entries(
-        accountBalanceChanges
-      )) {
+      for (const [accountId, balanceChange] of Object.entries(accountBalanceChanges)) {
         await tx.account.update({
           where: { id: accountId },
           data: {
@@ -102,14 +100,20 @@ export async function bulkDeleteTransactions(transactionIds) {
       }
     });
 
-    revalidatePath("/dashboard", "page");                    // Static path — fine
-    revalidatePath(`/account/${accountId}`, "page");
+    revalidatePath("/dashboard", "page");
+
+    // Revalidate all affected accounts
+    Object.keys(accountBalanceChanges).forEach((accountId) => {
+      revalidatePath(`/account/${accountId}`, "page");
+    });
 
     return { success: true };
   } catch (error) {
+    console.error("Bulk delete error:", error);
     return { success: false, error: error.message };
   }
 }
+
 
 export async function updateDefaultAccount(accountId) {
   try {
