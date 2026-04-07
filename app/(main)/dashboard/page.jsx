@@ -1,4 +1,4 @@
-import dynamic from "next/dynamic";
+import { DashboardOverview } from "./_components/transaction-overview";
 import { getUserAccounts, getDashboardData } from "@/actions/dashboard";
 import { getCurrentBudget } from "@/actions/budget";
 import { AccountCard } from "./_components/account-card";
@@ -7,11 +7,7 @@ import { BudgetProgress } from "./_components/budget-progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 
-// 🔥 THIS FIXES YOUR PERFORMANCE ISSUE
-const DashboardOverview = dynamic(
-  () => import("./_components/transaction-overview"),
-  { ssr: false }
-);
+
 
 export const revalidate = 60;
 
